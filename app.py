@@ -193,6 +193,7 @@ with col_btn:
     st.markdown("</div>", unsafe_allow_html=True)
 
 # Кнопка розширених налаштувань
+st.markdown("<div style='margin-top:1rem;'>", unsafe_allow_html=True)
 with st.expander("Налаштування даних для навчання"):
     st.markdown("""
     <div style="color:#8aabcc; font-size:0.82rem; margin-bottom:1rem;">
@@ -230,26 +231,10 @@ with st.expander("Налаштування даних для навчання"):
         if st.button("Скинути до стандартних", key="reset_dates"):
             st.session_state.train_start = DEFAULT_START
             st.session_state.train_end   = DEFAULT_END
-            st.success("Скинуто: 2009 — 2024")
+            st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # Підказки
-    st.markdown("""
-    <div style="display:flex; gap:10px; margin-top:0.5rem; flex-wrap:wrap;">
-        <span style="background:rgba(45,125,210,0.2); border:1px solid var(--border); border-radius:8px;
-              padding:4px 12px; font-size:0.75rem; color:#8aabcc;">
-            1940–2024 &mdash; максимум даних (ERA5)
-        </span>
-        <span style="background:rgba(45,125,210,0.2); border:1px solid var(--border); border-radius:8px;
-              padding:4px 12px; font-size:0.75rem; color:#8aabcc;">
-            2000–2024 &mdash; баланс точності і швидкості
-        </span>
-        <span style="background:rgba(45,125,210,0.2); border:1px solid var(--border); border-radius:8px;
-              padding:4px 12px; font-size:0.75rem; color:#8aabcc;">
-            2009–2024 &mdash; стандартне налаштування
-        </span>
-    </div>
-    """, unsafe_allow_html=True)
+
 
 if go_btn:
     coords = st.session_state.city_coords
