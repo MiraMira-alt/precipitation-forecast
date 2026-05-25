@@ -129,8 +129,6 @@ for key in ['ready','df','models','best_model','metrics','feature_cols','results
 if 'city_coords' not in st.session_state:
     st.session_state.city_coords = {'lat': 50.4501, 'lon': 30.5234, 'name': 'Київ'}
 
-TRAIN_START = "2009-01-01"
-TRAIN_END   = "2024-12-31"
 PRESET_CITIES = {
     "Київ":              (50.4501, 30.5234),
     "Львів":             (49.8397, 24.0297),
@@ -140,6 +138,17 @@ PRESET_CITIES = {
     "Запоріжжя":         (47.8388, 35.1396),
     "Інше (координати)": None,
 }
+
+# Дефолтний період
+DEFAULT_START = "2009-01-01"
+DEFAULT_END   = "2024-12-31"
+
+if "train_start" not in st.session_state:
+    st.session_state.train_start = DEFAULT_START
+if "train_end" not in st.session_state:
+    st.session_state.train_end = DEFAULT_END
+if "show_date_settings" not in st.session_state:
+    st.session_state.show_date_settings = False
 
 st.markdown("""
 <div style="text-align:center; padding: 2rem 0 1.5rem 0;">
@@ -165,12 +174,16 @@ with col_city:
         st.session_state.city_coords = {'lat': lat, 'lon': lon, 'name': city_choice}
 
 with col_info:
-    st.markdown("""
+    from datetime import datetime
+    ts = st.session_state.train_start
+    te = st.session_state.train_end
+    days_count = (datetime.strptime(te, "%Y-%m-%d") - datetime.strptime(ts, "%Y-%m-%d")).days
+    st.markdown(f"""
     <div style="background:rgba(26,48,80,0.5); border:1px solid var(--border);
          border-radius:10px; padding:0.85rem 1.2rem; margin-top:1.8rem;">
         <span style="color:#8aabcc; font-size:0.78rem;">Модель навчена на даних:</span><br>
-        <span style="color:#e8f4fd; font-weight:500;">2009 &mdash; 2024</span>
-        <span style="color:#8aabcc; font-size:0.75rem; margin-left:8px;">(5 840 днів)</span>
+        <span style="color:#e8f4fd; font-weight:500;">{ts[:4]} &mdash; {te[:4]}</span>
+        <span style="color:#8aabcc; font-size:0.75rem; margin-left:8px;">({days_count:,} днів)</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -179,11 +192,70 @@ with col_btn:
     go_btn = st.button("Отримати прогноз")
     st.markdown("</div>", unsafe_allow_html=True)
 
+# Кнопка розширених налаштувань
+with st.expander("Налаштування даних для навчання"):
+    st.markdown("""
+    <div style="color:#8aabcc; font-size:0.82rem; margin-bottom:1rem;">
+        Open-Meteo надає архівні дані з <b style='color:#e8f4fd'>1940</b> до приблизно 
+        <b style='color:#e8f4fd'>5 днів тому</b>. 
+        Чим більший діапазон — тим точніша модель, але довше завантаження.
+    </div>
+    """, unsafe_allow_html=True)
+
+    from datetime import date, timedelta
+    max_end = date.today() - timedelta(days=5)
+
+    dc1, dc2, dc3 = st.columns([1, 1, 1])
+    with dc1:
+        new_start = st.date_input("Початок навчання",
+            value=date(2009, 1, 1),
+            min_value=date(1940, 1, 1),
+            max_value=date(2020, 12, 31),
+            key="date_start_picker")
+    with dc2:
+        new_end = st.date_input("Кінець навчання",
+            value=date(2024, 12, 31),
+            min_value=date(1941, 1, 1),
+            max_value=max_end,
+            key="date_end_picker")
+    with dc3:
+        st.markdown("<div style='margin-top:1.8rem;'>", unsafe_allow_html=True)
+        if st.button("Застосувати", key="apply_dates"):
+            if new_start < new_end:
+                st.session_state.train_start = new_start.strftime("%Y-%m-%d")
+                st.session_state.train_end   = new_end.strftime("%Y-%m-%d")
+                st.success(f"Встановлено: {new_start} — {new_end}")
+            else:
+                st.error("Початок має бути раніше кінця")
+        if st.button("Скинути до стандартних", key="reset_dates"):
+            st.session_state.train_start = DEFAULT_START
+            st.session_state.train_end   = DEFAULT_END
+            st.success("Скинуто: 2009 — 2024")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # Підказки
+    st.markdown("""
+    <div style="display:flex; gap:10px; margin-top:0.5rem; flex-wrap:wrap;">
+        <span style="background:rgba(45,125,210,0.2); border:1px solid var(--border); border-radius:8px;
+              padding:4px 12px; font-size:0.75rem; color:#8aabcc;">
+            1940–2024 &mdash; максимум даних (ERA5)
+        </span>
+        <span style="background:rgba(45,125,210,0.2); border:1px solid var(--border); border-radius:8px;
+              padding:4px 12px; font-size:0.75rem; color:#8aabcc;">
+            2000–2024 &mdash; баланс точності і швидкості
+        </span>
+        <span style="background:rgba(45,125,210,0.2); border:1px solid var(--border); border-radius:8px;
+              padding:4px 12px; font-size:0.75rem; color:#8aabcc;">
+            2009–2024 &mdash; стандартне налаштування
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+
 if go_btn:
     coords = st.session_state.city_coords
     progress = st.progress(0, text="Завантажую історичні дані...")
     try:
-        df = fetch_historical_data(lat=coords['lat'], lon=coords['lon'], start=TRAIN_START, end=TRAIN_END)
+        df = fetch_historical_data(lat=coords['lat'], lon=coords['lon'], start=st.session_state.train_start, end=st.session_state.train_end)
         df = prepare_features(df)
         df.to_csv("weather_daily.csv", index=True)
         st.session_state.df = df
@@ -242,7 +314,7 @@ if st.session_state.ready:
         img_tag = (
             f'<img src="data:image/png;base64,{UMBRELLA_B64}" style="width:52px;height:52px;object-fit:contain;margin:4px 0;">'
             if is_rain else
-            f'<img src="data:image/jpeg;base64,{SUN_B64}" style="width:52px;height:52px;object-fit:contain;margin:4px 0;">'
+            f'<img src="data:image/png;base64,{SUN_B64}" style="width:52px;height:52px;object-fit:contain;margin:4px 0;">'
         )
         with col:
             st.markdown(f"""
