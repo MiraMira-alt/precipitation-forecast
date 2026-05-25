@@ -13,7 +13,6 @@ from feature_engineering import prepare_features
 
 st.set_page_config(
     page_title="Прогноз опадів",
-    page_icon="assets/icon.png" if False else None,
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -50,8 +49,6 @@ h1 {
     background-clip: text;
     margin-bottom: 0.2rem !important;
 }
-h2 { font-size: 1.2rem !important; color: var(--cyan) !important; }
-h3 { font-size: 1rem !important; color: var(--rain) !important; }
 
 .block-title {
     font-family: 'Unbounded', sans-serif;
@@ -63,48 +60,27 @@ h3 { font-size: 1rem !important; color: var(--rain) !important; }
     padding-left: 10px;
     margin-bottom: 1rem;
 }
-.metric-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 1.2rem;
-    backdrop-filter: blur(10px);
-    margin-bottom: 0.8rem;
+
+/* Всі підписи полів — світлий текст */
+label, [data-testid="stSelectbox"] label,
+.stSelectbox label, div[class*="stSelectbox"] > label,
+[data-baseweb="select"] label {
+    color: #c8dff0 !important;
+    font-size: 0.88rem !important;
 }
-.forecast-card {
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 1.5rem;
-    border: 1px solid var(--border);
-    backdrop-filter: blur(10px);
-    text-align: center;
+
+/* Поле selectbox */
+[data-testid="stSelectbox"] > div > div {
+    background: rgba(26,48,80,0.9) !important;
+    border: 1px solid rgba(45,125,210,0.5) !important;
+    color: #e8f4fd !important;
+    border-radius: 8px !important;
 }
-.rain-badge {
-    background: linear-gradient(135deg, #1565c0, #0d47a1);
-    border: 1px solid var(--rain);
-    color: var(--rain);
-    border-radius: 20px;
-    padding: 4px 14px;
-    font-size: 0.8rem;
-    font-weight: 500;
+
+/* Текст всередині selectbox */
+[data-testid="stSelectbox"] * {
+    color: #e8f4fd !important;
 }
-.dry-badge {
-    background: linear-gradient(135deg, #4a3800, #332700);
-    border: 1px solid var(--dry);
-    color: var(--dry);
-    border-radius: 20px;
-    padding: 4px 14px;
-    font-size: 0.8rem;
-    font-weight: 500;
-}
-.prob-bar-container {
-    background: rgba(255,255,255,0.1);
-    border-radius: 20px;
-    height: 8px;
-    margin-top: 8px;
-    overflow: hidden;
-}
-.prob-bar-fill { height: 100%; border-radius: 20px; }
 
 [data-testid="stButton"] > button {
     background: linear-gradient(135deg, var(--blue-acc), #1a5fa8) !important;
@@ -121,15 +97,7 @@ h3 { font-size: 1rem !important; color: var(--rain) !important; }
     transform: translateY(-2px) !important;
     box-shadow: 0 6px 20px rgba(45,125,210,0.4) !important;
 }
-[data-testid="stSelectbox"] > div > div,
-[data-testid="stDateInput"] > div > div > input,
-[data-testid="stTextInput"] > div > div > input {
-    background: rgba(26,48,80,0.8) !important;
-    border: 1px solid var(--border) !important;
-    color: var(--text) !important;
-    border-radius: 8px !important;
-}
-[data-testid="stMetricValue"] { color: var(--cyan) !important; }
+
 .stTabs [data-baseweb="tab-list"] {
     background: var(--card-bg) !important;
     border-radius: 10px !important;
@@ -151,6 +119,42 @@ h3 { font-size: 1rem !important; color: var(--rain) !important; }
     border-radius: 10px !important;
 }
 hr { border-color: var(--border) !important; }
+
+.forecast-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 1.5rem;
+    border: 1px solid var(--border);
+    text-align: center;
+}
+.rain-badge {
+    background: linear-gradient(135deg, #1565c0, #0d47a1);
+    border: 1px solid var(--rain);
+    color: var(--rain);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: inline-block;
+}
+.dry-badge {
+    background: linear-gradient(135deg, #4a3800, #332700);
+    border: 1px solid var(--dry);
+    color: var(--dry);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: inline-block;
+}
+.prob-bar-container {
+    background: rgba(255,255,255,0.1);
+    border-radius: 20px;
+    height: 8px;
+    margin-top: 8px;
+    overflow: hidden;
+}
+.prob-bar-fill { height: 100%; border-radius: 20px; }
 .success-box {
     background: rgba(0,150,100,0.15);
     border: 1px solid rgba(0,200,130,0.4);
@@ -185,6 +189,10 @@ for key in ['df','models','best_model','metrics','feature_cols','forecast_result
 if 'city_coords' not in st.session_state:
     st.session_state.city_coords = {'lat': 50.4501, 'lon': 30.5234, 'name': 'Київ'}
 
+# Фіксований період навчання
+TRAIN_START = "2009-01-01"
+TRAIN_END   = "2024-12-31"
+
 # -- Header --
 st.markdown("""
 <div style="text-align:center; padding: 2rem 0 1rem 0;">
@@ -202,16 +210,16 @@ st.markdown("---")
 st.markdown('<div class="block-title">Блок 1 — Завантаження даних</div>', unsafe_allow_html=True)
 
 PRESET_CITIES = {
-    "Київ":       (50.4501, 30.5234),
-    "Львів":      (49.8397, 24.0297),
-    "Харків":     (49.9935, 36.2304),
-    "Одеса":      (46.4825, 30.7233),
-    "Дніпро":     (48.4647, 35.0462),
-    "Запоріжжя":  (47.8388, 35.1396),
+    "Київ":              (50.4501, 30.5234),
+    "Львів":             (49.8397, 24.0297),
+    "Харків":            (49.9935, 36.2304),
+    "Одеса":             (46.4825, 30.7233),
+    "Дніпро":            (48.4647, 35.0462),
+    "Запоріжжя":         (47.8388, 35.1396),
     "Інше (координати)": None,
 }
 
-col1, col2, col3 = st.columns([2, 1, 1])
+col1, col2 = st.columns([2, 3])
 with col1:
     city_choice = st.selectbox("Місто", list(PRESET_CITIES.keys()), index=0)
     if city_choice == "Інше (координати)":
@@ -227,12 +235,14 @@ with col1:
         st.session_state.city_coords = {'lat': lat, 'lon': lon, 'name': city_choice}
 
 with col2:
-    from datetime import date
-    start_date = st.date_input("Початок периоду", value=date(2009, 1, 1),
-                               min_value=date(2000, 1, 1), max_value=date(2023, 12, 31))
-with col3:
-    end_date = st.date_input("Кінець периоду", value=date(2024, 12, 31),
-                             min_value=date(2000, 1, 2), max_value=date(2024, 12, 31))
+    st.markdown(f"""
+    <div style="background:rgba(26,48,80,0.5); border:1px solid rgba(45,125,210,0.3);
+         border-radius:10px; padding:0.9rem 1.2rem; margin-top:1.8rem;">
+        <span style="color:#8aabcc; font-size:0.8rem;">Архівний период навчання:</span>
+        <span style="color:#e8f4fd; font-weight:500; margin-left:8px;">2009 — 2024</span>
+        <span style="color:#8aabcc; font-size:0.75rem; margin-left:12px;">(5 840 днів)</span>
+    </div>
+    """, unsafe_allow_html=True)
 
 if st.button("Завантажити дані", use_container_width=False):
     coords = st.session_state.city_coords
@@ -240,8 +250,7 @@ if st.button("Завантажити дані", use_container_width=False):
         try:
             df = fetch_historical_data(
                 lat=coords['lat'], lon=coords['lon'],
-                start=start_date.strftime("%Y-%m-%d"),
-                end=end_date.strftime("%Y-%m-%d"),
+                start=TRAIN_START, end=TRAIN_END,
             )
             df = prepare_features(df)
             st.session_state.df = df
@@ -279,7 +288,7 @@ if st.session_state.df is not None:
             )
             st.plotly_chart(fig_pie, use_container_width=True)
             st.markdown(
-                f'<div class="info-box">Днів з опадами: <b>{rain_days}</b> ({rain_days/len(df)*100:.1f}%) &nbsp;&nbsp; '
+                f'<div class="info-box">Днів з опадами: <b>{rain_days}</b> ({rain_days/len(df)*100:.1f}%) &nbsp;&nbsp;'
                 f'Сухих днів: <b>{dry_days}</b> ({dry_days/len(df)*100:.1f}%)</div>',
                 unsafe_allow_html=True
             )
@@ -298,9 +307,9 @@ else:
         with st.spinner("Навчаю 4 моделі класифікації..."):
             try:
                 models, best_model, metrics, feature_cols = train_models(st.session_state.df)
-                st.session_state.models      = models
-                st.session_state.best_model  = best_model
-                st.session_state.metrics     = metrics
+                st.session_state.models       = models
+                st.session_state.best_model   = best_model
+                st.session_state.metrics      = metrics
                 st.session_state.feature_cols = feature_cols
                 joblib.dump(best_model,   "best_model.pkl")
                 joblib.dump(feature_cols, "feature_cols.pkl")
@@ -408,8 +417,8 @@ if st.session_state.best_model is None:
 else:
     coords = st.session_state.city_coords
     st.markdown(
-        f'<div class="info-box">Прогноз будується на основі даних Open-Meteo Forecast API '
-        f'на наступні 7 днів для міста <b>{coords["name"]}</b>.</div>',
+        f'<div class="info-box">Прогноз на наступні 7 днів для міста <b>{coords["name"]}</b> '
+        f'на основі даних Open-Meteo Forecast API.</div>',
         unsafe_allow_html=True
     )
     st.markdown("")
@@ -420,8 +429,8 @@ else:
                 forecast_df = fetch_forecast_data(lat=coords['lat'], lon=coords['lon'], days=7)
                 forecast_df = prepare_features(forecast_df, is_forecast=True)
                 results = predict_forecast(forecast_df, st.session_state.best_model, st.session_state.feature_cols)
-                st.session_state.forecast_results  = results
-                st.session_state.forecast_df_raw   = forecast_df
+                st.session_state.forecast_results = results
+                st.session_state.forecast_df_raw  = forecast_df
             except Exception as e:
                 st.error(f"Помилка прогнозу: {e}")
                 import traceback; st.code(traceback.format_exc())
@@ -432,42 +441,36 @@ else:
 
         st.markdown(f"### {coords['name']} — прогноз на {len(results)} днів")
 
-        cols_per_row = min(len(results), 7)
-        rows = [results[i:i+cols_per_row] for i in range(0, len(results), cols_per_row)]
-
-        for row in rows:
-            row_cols = st.columns(len(row))
-            for col, day in zip(row_cols, row):
-                prob     = day['probability']
-                is_rain  = day['prediction'] == 1
-                icon     = "Дощ" if is_rain else "Сухо"
-                badge    = "rain-badge" if is_rain else "dry-badge"
-                bar_col  = "#4fc3f7" if is_rain else "#ffd54f"
-                prob_pct = int(prob * 100)
-                with col:
-                    st.markdown(f"""
-                    <div class="forecast-card">
-                        <div style="font-size:0.7rem; color:#8aabcc; margin-bottom:6px;">{day['date']}</div>
-                        <div class="{badge}">{icon}</div>
-                        <div style="margin-top:10px; font-size:1.3rem; font-weight:700;
-                             color:{'#4fc3f7' if is_rain else '#ffd54f'};">{prob_pct}%</div>
-                        <div style="font-size:0.65rem; color:#8aabcc;">ймовірність опадів</div>
-                        <div class="prob-bar-container">
-                            <div class="prob-bar-fill" style="width:{prob_pct}%; background:{bar_col};"></div>
-                        </div>
+        row_cols = st.columns(len(results))
+        for col, day in zip(row_cols, results):
+            prob     = day['probability']
+            is_rain  = day['prediction'] == 1
+            badge    = "rain-badge" if is_rain else "dry-badge"
+            label    = "Опади" if is_rain else "Сухо"
+            bar_col  = "#4fc3f7" if is_rain else "#ffd54f"
+            prob_pct = int(prob * 100)
+            with col:
+                st.markdown(f"""
+                <div class="forecast-card">
+                    <div style="font-size:0.7rem; color:#8aabcc; margin-bottom:6px;">{day['date']}</div>
+                    <div class="{badge}">{label}</div>
+                    <div style="margin-top:10px; font-size:1.3rem; font-weight:700;
+                         color:{'#4fc3f7' if is_rain else '#ffd54f'};">{prob_pct}%</div>
+                    <div style="font-size:0.65rem; color:#8aabcc;">ймовірність опадів</div>
+                    <div class="prob-bar-container">
+                        <div class="prob-bar-fill" style="width:{prob_pct}%; background:{bar_col};"></div>
                     </div>
-                    """, unsafe_allow_html=True)
+                </div>
+                """, unsafe_allow_html=True)
 
         st.markdown("")
 
-        # Графік прогнозу
         dates = [r['date'] for r in results]
         probs = [r['probability'] * 100 for r in results]
 
         fig_fc = make_subplots(specs=[[{"secondary_y": True}]])
         fig_fc.add_trace(go.Bar(
-            x=dates, y=probs,
-            name="Ймовірність опадів (%)",
+            x=dates, y=probs, name="Ймовірність опадів (%)",
             marker_color=['#4fc3f7' if r['prediction']==1 else '#ffd54f' for r in results],
             marker_opacity=0.8,
         ), secondary_y=False)
@@ -492,12 +495,14 @@ else:
         st.plotly_chart(fig_fc, use_container_width=True)
 
         with st.expander("Детальна таблиця прогнозу"):
-            table_data = [{'Дата': r['date'],
-                           'Прогноз': 'Очікуються опади' if r['prediction']==1 else 'Опадів не очікується',
-                           'Ймовірність': f"{r['probability']*100:.1f}%"} for r in results]
+            table_data = [
+                {'Дата': r['date'],
+                 'Прогноз': 'Очікуються опади' if r['prediction']==1 else 'Опадів не очікується',
+                 'Ймовірність': f"{r['probability']*100:.1f}%"}
+                for r in results
+            ]
             st.dataframe(pd.DataFrame(table_data), use_container_width=True)
 
-# -- Footer --
 st.markdown("---")
 st.markdown("""
 <div style="text-align:center; color:#8aabcc; font-size:0.75rem; padding:1rem 0;">
