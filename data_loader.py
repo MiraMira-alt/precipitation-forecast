@@ -1,10 +1,7 @@
-"""
-data_loader.py
-Завантаження даних з Open-Meteo Historical та Forecast API.
-"""
+# Клітинка — перезаписуємо data_loader.py прямо в Colab
+data_loader_code = '''
 import requests
 import pandas as pd
-
 
 DAILY_VARIABLES = [
     "precipitation_sum",
@@ -26,10 +23,9 @@ BASE_FORECAST   = "https://api.open-meteo.com/v1/forecast"
 
 
 def _parse_response(data: dict) -> pd.DataFrame:
-    """Перетворює відповідь API у DataFrame."""
     daily = data.get("daily", {})
     if not daily or "time" not in daily:
-        raise ValueError("Відповідь API не містить поля 'daily' або 'time'")
+        raise ValueError("Відповідь API не містить поля daily або time")
     df = pd.DataFrame(daily)
     df = df.rename(columns={"time": "date"})
     df["date"] = pd.to_datetime(df["date"])
@@ -38,7 +34,6 @@ def _parse_response(data: dict) -> pd.DataFrame:
 
 
 def fetch_historical_data(lat: float, lon: float, start: str, end: str) -> pd.DataFrame:
-    """Завантажує щоденні архівні дані з Open-Meteo."""
     params = {
         "latitude": lat,
         "longitude": lon,
@@ -50,17 +45,14 @@ def fetch_historical_data(lat: float, lon: float, start: str, end: str) -> pd.Da
     response = requests.get(BASE_HISTORICAL, params=params, timeout=60)
     response.raise_for_status()
     df = _parse_response(response.json())
-
     df["target"] = (
         (df["precipitation_sum"].fillna(0) > 0) |
         (df["snowfall_sum"].fillna(0) > 0)
     ).astype(int)
-
     return df
 
 
 def fetch_forecast_data(lat: float, lon: float, days: int = 7) -> pd.DataFrame:
-    """Завантажує прогнозні дані з Open-Meteo Forecast API."""
     params = {
         "latitude": lat,
         "longitude": lon,
@@ -74,7 +66,6 @@ def fetch_forecast_data(lat: float, lon: float, days: int = 7) -> pd.DataFrame:
 
 
 def geocode_city(city_name: str):
-    """Геокодування назви міста через Open-Meteo Geocoding API."""
     url = "https://geocoding-api.open-meteo.com/v1/search"
     resp = requests.get(url, params={"name": city_name, "count": 1, "language": "uk"}, timeout=10)
     resp.raise_for_status()
@@ -83,3 +74,9 @@ def geocode_city(city_name: str):
         return None
     r = results[0]
     return {"lat": r["latitude"], "lon": r["longitude"], "name": r.get("name", city_name)}
+'''
+
+with open("data_loader.py", "w") as f:
+    f.write(data_loader_code)
+
+print("data_loader.py оновлено")
